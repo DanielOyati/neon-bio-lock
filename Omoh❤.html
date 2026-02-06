@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
+    />
+    <title>ACCESS GRANTED ❤️</title>
+
+    <style>
+      :root {
+        --neon: #00ffd5;
+        --pink: #ff6fb7;
+        --bg: #04090f;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+      body {
+        position: fixed;
+        inset: 0;
+        font-family: 'Courier New', monospace;
+        background: radial-gradient(circle at top, #0f2027, var(--bg));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--neon);
+      }
+
+      /* Cinematic vignette */
+      #vignette {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 6;
+        background: radial-gradient(
+          circle at center,
+          rgba(0, 0, 0, 0) 55%,
+          rgba(0, 0, 0, 0.35) 75%,
+          rgba(0, 0, 0, 0.6) 100%
+        );
+        opacity: 0;
+        transition: opacity 0.8s ease;
+      }
+
+      /* Galaxy */
+      #galaxy {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+      }
+
+      /* QR HUD */
+      #qr {
+        position: fixed;
+        top: 14px;
+        left: 14px;
+        width: 120px;
+        height: 120px;
+        background: #000;
+        border-radius: 10px;
+        box-shadow: 0 0 25px rgba(0, 255, 213, 0.55);
+        z-index: 5;
+        display: none;
+      }
+
+      @media (max-width: 480px) {
+        #qr {
+          width: 85px;
+          height: 85px;
+        }
+      }
+
+      /* Card */
+      .card {
+        position: relative;
+        z-index: 2;
+        width: min(92vw, 700px);
+        padding: clamp(22px, 5vw, 38px);
+        border-radius: 26px;
+        background: rgba(0, 0, 0, 0.55);
+        backdrop-filter: blur(22px);
+        border: 1px solid rgba(0, 255, 213, 0.35);
+        box-shadow: 0 0 60px rgba(0, 255, 213, 0.25);
+        text-align: center;
+        transition:
+          transform 0.2s ease,
+          box-shadow 0.6s ease;
+      }
+      .card.glow {
+        box-shadow:
+          0 0 80px rgba(255, 111, 183, 0.45),
+          0 0 140px rgba(255, 111, 183, 0.25);
+      }
+
+      /* Text */
+      h1 {
+        font-size: clamp(1.4rem, 4.5vw, 2.3rem);
+        margin-bottom: 12px;
+      }
+      p {
+        font-size: clamp(0.95rem, 3.8vw, 1.15rem);
+        line-height: 1.8;
+        white-space: pre-line;
+      }
+      .hidden {
+        display: none;
+      }
+
+      /* Inputs */
+      input,
+      button {
+        width: 100%;
+        max-width: 320px;
+        padding: 14px 18px;
+        margin: 10px auto;
+        display: block;
+        border-radius: 999px;
+        background: transparent;
+        border: 2px solid var(--neon);
+        color: var(--neon);
+        font-size: 1rem;
+      }
+      button {
+        cursor: pointer;
+        transition: 0.35s;
+      }
+      button:hover {
+        background: var(--neon);
+        color: #000;
+        box-shadow: 0 0 25px var(--neon);
+      }
+
+      /* Cursor */
+      .cursor {
+        display: inline-block;
+        width: 8px;
+        height: 1em;
+        background: var(--neon);
+        animation: blink 1s infinite;
+      }
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
+      }
+
+      /* Hearts */
+      .heart {
+        position: absolute;
+        font-size: 22px;
+        pointer-events: none;
+        animation: floatUp linear infinite;
+      }
+      @keyframes floatUp {
+        from {
+          transform: translateY(120vh) scale(0.6);
+          opacity: 0;
+        }
+        30% {
+          opacity: 1;
+        }
+        to {
+          transform: translateY(-20vh) scale(1.4);
+          opacity: 0;
+        }
+      }
+
+      /* Final line pulse */
+      .final {
+        color: var(--pink);
+        text-shadow:
+          0 0 10px rgba(255, 111, 183, 0.8),
+          0 0 30px rgba(255, 111, 183, 0.6);
+        animation: pulse 1.6s ease-in-out infinite;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.04);
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <canvas id="galaxy"></canvas>
+    <canvas id="qr"></canvas>
+    <div id="vignette"></div>
+
+    <div class="card" id="card">
+      <h1>BIOMETRIC LOCK 🔐</h1>
+      <p>Enter access key to continue</p>
+      <input id="pass" placeholder="Access Key" />
+      <button id="unlock">SCAN</button>
+      <h1 id="granted" class="hidden">ACCESS GRANTED ✅</h1>
+      <p id="msg" class="hidden"></p>
+    </div>
+
+    <script>
+      const card = document.getElementById('card');
+      const pass = document.getElementById('pass');
+      const unlock = document.getElementById('unlock');
+      const granted = document.getElementById('granted');
+      const msg = document.getElementById('msg');
+      const qr = document.getElementById('qr');
+      const vignette = document.getElementById('vignette');
+      let music;
+
+      /* Galaxy */
+      const galaxy = document.getElementById('galaxy');
+      const gtx = galaxy.getContext('2d');
+      let w, h, stars;
+      function resize() {
+        w = galaxy.width = innerWidth;
+        h = galaxy.height = innerHeight;
+        stars = [...Array(140)].map(() => ({
+          x: Math.random() * w,
+          y: Math.random() * h,
+          z: Math.random() * w,
+        }));
+      }
+      addEventListener('resize', resize);
+      resize();
+      (function animate() {
+        gtx.fillStyle = '#04090f';
+        gtx.fillRect(0, 0, w, h);
+        stars.forEach((s) => {
+          s.z -= 2;
+          if (s.z <= 0) s.z = w;
+          const x = (s.x - w / 2) * (w / s.z) + w / 2;
+          const y = (s.y - h / 2) * (w / s.z) + h / 2;
+          gtx.fillStyle = '#00ffd5';
+          gtx.fillRect(x, y, 2, 2);
+        });
+        requestAnimationFrame(animate);
+      })();
+
+      /* QR */
+      function syncQR() {
+        const s = qr.getBoundingClientRect().width;
+        qr.width = s;
+        qr.height = s;
+      }
+      function generateQR(text) {
+        const ctx = qr.getContext('2d'),
+          size = qr.width,
+          cell = 8;
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, size, size);
+        ctx.fillStyle = '#00ffd5';
+        let seed = 0;
+        for (const c of text) seed += c.charCodeAt(0);
+        for (let y = 0; y < size; y += cell)
+          for (let x = 0; x < size; x += cell) {
+            seed = (seed * 9301 + 49297) % 233280;
+            if (seed / 233280 > 0.5) ctx.fillRect(x, y, cell - 1, cell - 1);
+          }
+      }
+
+      /* Unlock */
+      unlock.onclick = () => {
+        if (pass.value.trim().toLowerCase() === 'omoh') {
+          music = new Audio('just-a-dream.mp3');
+          music.loop = true;
+          music.volume = 0.6;
+          music.muted = true;
+          music.play().then(() => (music.muted = false));
+
+          pass.remove();
+          unlock.remove();
+          granted.classList.remove('hidden');
+          msg.classList.remove('hidden');
+          qr.style.display = 'block';
+          syncQR();
+          generateQR('You + Me = ❤️');
+
+          typeText(`Target Name: Omoh 🌹
+
+Running emotional scan...
+Analyzing heart protocols...
+Bypassing defenses...
+
+Result found 💖
+
+Somehow, every version of my happiness
+keeps resolving back to you.
+
+This may look like code,
+but the truth is simple:
+
+You + Me = 🥰❤️`);
+
+          heartNova();
+        } else {
+          pass.value = '';
+          pass.placeholder = 'ACCESS DENIED ❌';
+        }
+      };
+
+      /* Typewriter with finale trigger */
+      function typeText(t) {
+        let i = 0;
+        msg.textContent = '';
+        const cur = document.createElement('span');
+        cur.className = 'cursor';
+        msg.appendChild(cur);
+        const timer = setInterval(() => {
+          if (i < t.length) {
+            cur.before(t[i++]);
+            if (t.slice(0, i).endsWith('You + Me = 🥰❤️')) {
+              finale();
+            }
+          } else {
+            clearInterval(timer);
+            cur.remove();
+          }
+        }, 30);
+      }
+
+      /* Finale effects */
+      let finaleDone = false;
+      function finale() {
+        if (finaleDone) return;
+        finaleDone = true;
+        card.classList.add('glow');
+        vignette.style.opacity = 1;
+
+        // music swell
+        let v = music.volume;
+        const swell = setInterval(() => {
+          v = Math.min(1, v + 0.05);
+          music.volume = v;
+          if (v >= 1) clearInterval(swell);
+        }, 120);
+
+        // mark last line
+        setTimeout(() => {
+          const lines = msg.innerHTML.split('<br>');
+          lines[lines.length - 1] =
+            `<span class="final">${lines[lines.length - 1]}</span>`;
+          msg.innerHTML = lines.join('<br>');
+        }, 300);
+      }
+
+      /* Hearts */
+      function heartNova() {
+        for (let i = 0; i < 60; i++) {
+          setTimeout(() => {
+            const h = document.createElement('div');
+            h.className = 'heart';
+            h.textContent = Math.random() > 0.5 ? '❤️' : '💖';
+            h.style.left = Math.random() * 100 + 'vw';
+            h.style.animationDuration = Math.random() * 4 + 4 + 's';
+            document.body.appendChild(h);
+            setTimeout(() => h.remove(), 20000);
+          }, i * 80);
+        }
+      }
+
+      /* Parallax */
+      if (matchMedia('(hover:hover)').matches) {
+        addEventListener('mousemove', (e) => {
+          const x = (e.clientX / innerWidth - 0.5) * 12;
+          const y = (e.clientY / innerHeight - 0.5) * 12;
+          card.style.transform = `rotateX(${-y}deg) rotateY(${x}deg)`;
+        });
+      }
+    </script>
+  </body>
+</html>
